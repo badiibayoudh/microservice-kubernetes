@@ -1,0 +1,137 @@
+Learning Kubernates
+
+- Containerisieren : In order to be deployed in Kubernates , an application need first to be containerized
+  Um in Kubernates bereitgestellt werdn, müssen die anwendungen containerisierte (In einem Container verpackt)
+- Cluster: ein Kubernates-cluster besteht aus zwei zwei arte von Resoursen
+  - Der Master:
+    - plant die anwendungen!
+    - verwaltet den status der anwendungen !
+  - Die Arbeiter
+
+- Beispiel minkube echo server
+  https://github.com/jmalloc/echo-server
+  - badikube exec --stdin --tty hello-minikube-59d4768566-6q9kg -- /bin/bash
+
+- Beispiel kubernates hello world
+  https://kubernetes.io/docs/tutorials/hello-minikube/
+    - create a deployment: this will also create and run a pod  
+      kubectl create deployment hello-node --image=registry.k8s.io/e2e-test-images/agnhost:2.39 -- /agnhost netexec --http-port=8080
+    - By default, the Pod is only accessible by its internal IP address within the Kubernetes cluster. To make the hello-node Container accessible from outside the Kubernetes virtual network, you have to expose the Pod as a Kubernetes Service. The application code inside the test image only listens on TCP port 8080. If you used kubectl expose to expose a different port, clients could not connect to that other port.
+    kubectl expose deployment hello-node --type=NodePort --port=8080
+
+- Beispiel Eberhald
+  https://github.com/ewolff/microservice-kubernetes/blob/master/HOW-TO-RUN.md
+  - set envrionment variable : 
+  vim ~/.profile
+  DOCKER_ACCOUNT="badiibayoudh"
+  - deploy the docker images in kubernated
+  sudo /media/sf_share/kubernetes-deploy.sh
+  - create a proxy to the Apache httpd server on your local machine (VM)
+  kubectl port-forward deployment/apache 8081:80
+  
+  - But this not enought, I want to access the service from my real local machine. that is why I will use the ingress controller.
+  https://microk8s.io/docs/addon-ingress
+  https://kubernetes.io/docs/tasks/access-application-cluster/ingress-minikube/
+	- install ingress addon
+    microk8s enable ingress
+	kubectl get pods -n ingress
+	- deploy container
+	kubectl create deployment web --image=gcr.io/google-samples/hello-app:1.0
+	- expose the container
+	kubectl expose deployment web --type=NodePort --port=8080
+	- Verify the Service is created and is available on a node port
+	kubectl get service web
+	- create ingress resource
+	kubectl apply -f /media/sf_share/example-ingress.yaml
+	- Verify the IP address is set:
+	kubectl get ingress
+	- get te ip of microk8s (MicroK8s will use the default interface.)
+	ip route | grep default
+	- test
+	curl --resolve "hello-world.info:80:192.168.178.32" -i http://hello-world.info
+	wget http://hello-world.info
+	- test in browser
+	C:\Windows\System32\drivers\etc
+	192.168.178.32 hello-world.info
+	http://hello-world.info
+	
+	
+Links
+ - Kubernates tutorials
+   https://kubernetes.io/docs/tutorials/
+
+
+
+######### Installation  ########
+#1- install linux
+install microk8s
+
+#2- configure microk8s
+#2.a add current user to group microk8s 
+sudo usermod -a -G microk8s $USER
+#2.b change owner of the folder to the current user
+sudo chown -f -R $USER ~/.kube
+#2.c restart the current user
+su - $USER
+
+#add Alias
+vim ~/.bash_aliases
+alias kubectl="microk8s kubectl"
+source ~/.bashrc
+
+
+#2- install minikube
+https://minikube.sigs.k8s.io/docs/start/
+curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+
+minikube start
+
+#adda alias
+vim ~/.bash_aliases
+alias kubectl="minikube kubectl --"
+source ~/.bashrc
+
+
+minikube Problem with driver : VM oder Docker
+Exiting due to GUEST_DRIVER_MISMATCH: The existing "minikube" cluster was created using the "virtualbox" driver, which is incompatible with requested "docker" driver.
+💡  Suggestion: Delete the existing 'minikube' cluster using: 'minikube delete', or start the existing 'minikube' cluster using: 'minikube start --driver=virtualbox'
+
+
+#3 install guest additions on the guest:  
+sudo apt-get install virtualbox-guest-additions-iso
+sudo apt-get virtualbox-guest-x11
+sudo usermod -aG vboxsf $USER
+
+#4 Add Port forwarding
+in VB: host:2222 --> guest:22
+
+
+#4 use Ingress controller to acces the service (no port frowarding)
+install ingress addon
+microk8s enable ingress
+... see previous installation section
+
+######### Deployment Docker images in Kubrnates ########
+#1 get git repo, compile code & build docker image
+see readme in https://github.com/ewolff/microservice-kubernetes/blob/master/HOW-TO-RUN.md
+
+#2 deploy in kubernate
+microk8s kubectl create deployment apache --image=docker.io/$DOCKER_ACCOUNT/microservice-kubernetes-demo-apache:latest --port=80
+microk8s kubectl expose deployment apache --type="LoadBalancer" --port 80
+microk8s kubectl create deployment catalog --image=docker.io/$DOCKER_ACCOUNT/microservice-kubernetes-demo-catalog:latest --port=8080
+microk8s kubectl expose deployment catalog --type="LoadBalancer" --port 8080
+microk8s kubectl create deployment customer --image=docker.io/$DOCKER_ACCOUNT/microservice-kubernetes-demo-customer:latest --port=8080
+microk8s kubectl expose deployment customer --type="LoadBalancer" --port 8080
+microk8s kubectl create deployment order --image=docker.io/$DOCKER_ACCOUNT/microservice-kubernetes-demo-order:latest --port=8080
+microk8s kubectl expose deployment order --type="LoadBalancer" --port 8080
+
+
+#3
+create a proxy to the Apache httpd server: microk8s kubectl port-forward deployment/apache 8081:80 
+add port forwarding in VM
+
+in Browser: http://127.0.0.1:8081/
+wget http://127.0.0.1:8081/
+
+######## Usage ############
+ssh -p 2222 baaab@localhost
